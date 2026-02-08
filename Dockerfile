@@ -1,30 +1,42 @@
-# See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
-
-# This stage is used when running from VS in fast mode (Default for Debug configuration)
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-USER $APP_UID
-WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
-
-
-# This stage is used to build the service project
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-ARG BUILD_CONFIGURATION=Release
+# Build stage
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
+
+# Copy csproj and restore dependencies
 COPY ["CoreModelSeperation.csproj", "."]
-RUN dotnet restore "./CoreModelSeperation.csproj"
+RUN dotnet restore "CoreModelSeperation.csproj"
+
+# Copy everything else and build
 COPY . .
-WORKDIR "/src/."
-RUN dotnet build "./CoreModelSeperation.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "CoreModelSeperation.csproj" -c Release -o /app/build
 
-# This stage is used to publish the service project to be copied to the final stage
+# Publish stage
 FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./CoreModelSeperation.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "CoreModelSeperation.csproj" -c Release -o /app/publish
 
-# This stage is used in production or when running from VS in regular mode (Default when not using the Debug configuration)
-FROM base AS final
+# Runtime stage
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
+
+# Install curl for health checks and debugging
+RUN apt-get update && \
+    apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create logs directory with proper permissions
+RUN mkdir -p /app/Logs && \
+    chmod 777 /app/Logs
+
+# Copy published application
 COPY --from=publish /app/publish .
+
+# Expose ports
+EXPOSE 80
+EXPOSE 443
+
+# Set environment variables
+ENV ASPNETCORE_URLS=http://+:80;https://+:443
+ENV ASPNETCORE_ENVIRONMENT=Development
+
+# Entry point
 ENTRYPOINT ["dotnet", "CoreModelSeperation.dll"]
