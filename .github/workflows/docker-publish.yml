@@ -37,7 +37,7 @@ jobs:
 
     - name: Verify Docker Compose
       run: |
-        docker-compose config
+        docker compose config
 
   deploy-docker-compose:
     needs: build-and-test
@@ -190,24 +190,24 @@ jobs:
           chmod 600 .env
           
           echo "📦 Pulling latest images..."
-          docker-compose pull
+          docker compose pull
           
           echo "🔄 Stopping existing containers..."
-          docker-compose down
+          docker compose down
           
           echo "🚀 Starting services..."
-          docker-compose up -d
+          docker compose up -d
           
           echo "⏳ Waiting for services to be healthy..."
           sleep 30
           
           echo "📊 Checking service status..."
-          docker-compose ps
+          docker compose ps
           
           echo "🔍 Checking API health..."
           curl -f http://localhost/swagger/v1/swagger.json && echo "✅ API is healthy" || echo "❌ API health check failed"
           
           echo "📝 Checking logs..."
-          docker-compose logs --tail=20 api
+          docker compose logs --tail=20 api
           
           echo "🎉 Deployment completed!"
