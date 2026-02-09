@@ -12,7 +12,32 @@ using System.Reflection;
 //using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// load environment variables from .env in development (optional)
+if (builder.Environment.IsDevelopment())
+{
+    var envPath = Path.Combine(builder.Environment.ContentRootPath, ".env");
+    if (File.Exists(envPath))
+    {
+        var lines = File.ReadAllLines(envPath);
+        foreach (var line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith("#")) continue;
+            var idx = line.IndexOf('=');
+            if (idx <= 0) continue;
+            var key = line.Substring(0, idx).Trim();
+            var val = line.Substring(idx + 1).Trim();
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(key)))
+            {
+                Environment.SetEnvironmentVariable(key, val);
+            }
+        }
+    }
+}
+
 builder.Services.AddMapster();
+
+// register distributed cache
 builder.Services.AddDistributedMemoryCache();
 
 // register DbContext via AddPersistence extension
