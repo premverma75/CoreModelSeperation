@@ -17,7 +17,7 @@ namespace CoreModelSeperation.Repogitories.Repogitory
             this._distributedCache = distributedCache;
         }
 
-        public Task<User> AddUpdateUser(User user)
+        public Task<User?> AddUpdateUser(User user)
         {
             if (user.Id == Guid.Empty || !_appDbContext.Users.Any(u => u.Id == user.Id))
             {
@@ -33,7 +33,7 @@ namespace CoreModelSeperation.Repogitories.Repogitory
             return Task.FromResult(user);
         }
 
-        public Task<bool> DeleteUser(Guid userId)
+        public Task<bool?> DeleteUser(Guid userId)
         {
             var user = _appDbContext.Users.FirstOrDefault(u => u.Id == userId);
             if (user == null)
@@ -42,22 +42,19 @@ namespace CoreModelSeperation.Repogitories.Repogitory
             _appDbContext.Users.Remove(user);
             _appDbContext.SaveChanges();
             return Task.FromResult(true);
-            
         }
 
-        public Task<List<User>> GetAllUsersAsync()
+        public Task<List<User?>> GetAllUsersAsync()
         {
             return _appDbContext.Users.AsNoTracking().ToListAsync();
-            
         }
 
-        public Task<User> GetUserDetails(Guid userId)
+        public Task<User?> GetUserDetails(Guid userId)
         {
             return _appDbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
-            
         }
 
-        public Task<string> GetUserNameAsync(Guid userId)
+        public Task<string?> GetUserNameAsync(Guid userId)
         {
             var cacheKey = $"username_{userId}";
             var cachedResult = _distributedCache.GetString(cacheKey);
@@ -67,7 +64,6 @@ namespace CoreModelSeperation.Repogitories.Repogitory
             return _appDbContext.Users.Where(u => u.Id == userId)
                  .AsNoTracking().Select(u => u.Name)
                  .FirstOrDefaultAsync();
-
         }
     }
 }

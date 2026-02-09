@@ -16,7 +16,7 @@ namespace CoreModelSeperation.Service.Implementation
             _userRepository = userRepository;
         }
 
-        public Task<User> AddUpdateUser(CreateUserRequestDto dto)
+        public Task<User?> AddUpdateUser(CreateUserRequestDto dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
             var user = dto.Adapt<User>();
@@ -26,27 +26,23 @@ namespace CoreModelSeperation.Service.Implementation
             return _userRepository.AddUpdateUser(user);
         }
 
-        public Task<bool> DeleteUser(Guid userId)
+        public Task<bool?> DeleteUser(Guid userId)
         {
-            if (userId == null)
             return _userRepository.DeleteUser(userId);
-            else throw new ArgumentNullException(nameof(userId));
         }
 
-        public Task<List<User>> GetAllUsersAsync()
+        public Task<List<User?>> GetAllUsersAsync()
         {
             return _userRepository.GetAllUsersAsync();
         }
 
-        public Task<User> GetUserDetails(Guid userId)
+        public Task<User?> GetUserDetails(Guid userId)
         {
-            if (userId == null) throw new ArgumentNullException(nameof(userId));
             return _userRepository.GetUserDetails(userId);
         }
 
-        public Task<string> GetUserNameAsync(Guid userId)
+        public Task<string?> GetUserNameAsync(Guid userId)
         {
-            if (userId == null) throw new ArgumentNullException(nameof(userId));
             return _userRepository.GetUserNameAsync(userId);
         }
     }
