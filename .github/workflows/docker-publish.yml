@@ -48,6 +48,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Ensure required secrets
+      run: |
+        if [ -z "${{ secrets.DOCKER_USERNAME }}" ] || [ -z "${{ secrets.DOCKER_PASSWORD }}" ] || [ -z "${{ secrets.SERVER_HOST }}" ] || [ -z "${{ secrets.SERVER_USER }}" ] || [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+          echo "One or more required secrets are missing. Please set DOCKER_USERNAME, DOCKER_PASSWORD, SERVER_HOST, SERVER_USER, and SSH_PRIVATE_KEY in repository secrets." >&2
+          exit 1
+        fi
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
