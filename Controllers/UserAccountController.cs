@@ -60,7 +60,7 @@ namespace CoreModelSeperation.Controllers
         [Route("GetUserDetails/{userId}")]
         public async Task<IActionResult> GetUserDetails(Guid userId)
         {
-            var user = _userService.GetUserDetails(userId);
+            var user = await _userService.GetUserDetails(userId);
             if (user == null)
             {
                 return NotFound();
@@ -72,7 +72,7 @@ namespace CoreModelSeperation.Controllers
         [Route("DeleteUser/{userId}")]
         public async Task<IActionResult> DeleteUser(Guid userId)
         {
-            bool result = await _userService.DeleteUser(userId);
+            bool? result = await _userService.DeleteUser(userId);
             if (result == false)
             {
                 return NotFound();

@@ -30,40 +30,44 @@ namespace CoreModelSeperation.Repogitories.Repogitory
                 _appDbContext.Users.Update(user);
             }
             _appDbContext.SaveChanges();
-            return Task.FromResult(user);
+            return Task.FromResult<User?>(user);
         }
 
         public Task<bool?> DeleteUser(Guid userId)
         {
             var user = _appDbContext.Users.FirstOrDefault(u => u.Id == userId);
             if (user == null)
-                return Task.FromResult(false);
+                return Task.FromResult<bool?>(false);
 
             _appDbContext.Users.Remove(user);
             _appDbContext.SaveChanges();
-            return Task.FromResult(true);
+            return Task.FromResult<bool?>(true);
         }
 
-        public Task<List<User?>> GetAllUsersAsync()
+        public async Task<List<User?>> GetAllUsersAsync()
         {
-            return _appDbContext.Users.AsNoTracking().ToListAsync();
+            var list = await _appDbContext.Users.AsNoTracking().ToListAsync();
+            var result = list.Select(u => (User?)u).ToList();
+            return result;
         }
 
-        public Task<User?> GetUserDetails(Guid userId)
+        public async Task<User?> GetUserDetails(Guid userId)
         {
-            return _appDbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+            var user = await _appDbContext.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+            return (User?)user;
         }
 
-        public Task<string?> GetUserNameAsync(Guid userId)
+        public async Task<string?> GetUserNameAsync(Guid userId)
         {
             var cacheKey = $"username_{userId}";
             var cachedResult = _distributedCache.GetString(cacheKey);
             if (cachedResult != null)
-                return Task.FromResult(cachedResult);
+                return cachedResult;
 
-            return _appDbContext.Users.Where(u => u.Id == userId)
+            var name = await _appDbContext.Users.Where(u => u.Id == userId)
                  .AsNoTracking().Select(u => u.Name)
                  .FirstOrDefaultAsync();
+            return (string?)name;
         }
     }
 }

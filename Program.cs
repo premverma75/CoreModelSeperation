@@ -14,12 +14,17 @@ using System.Reflection;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddMapster();
 builder.Services.AddDistributedMemoryCache();
-builder.Services.AddSqlServer<AppDbContext>(
-    builder.Configuration.GetConnectionString("DefaultConnection"));
+
+// register DbContext via AddPersistence extension
+builder.Services.AddPersistence(builder.Configuration);
+
+// register repositories and application services via extensions
+builder.Services.AddRepositories();
+builder.Services.AddApplicationServices();
+
+// explicitly register product services/repositories
 builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // register mappings once at startup
 EntityToDtoMapping.Register();
@@ -34,9 +39,7 @@ builder.Services.AddSwaggerGen(c =>
         Version = "v1"
     });
 });
-builder.Services.AddPersistence(builder.Configuration);
-builder.Services.AddRepositories();
-builder.Services.AddApplicationServices();
+
 builder.Host.UseSerilog((context, services, configuration) =>
 {
     configuration
