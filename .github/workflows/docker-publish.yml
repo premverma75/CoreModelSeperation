@@ -1,10 +1,10 @@
-﻿name: Build, Test and Deploy
+name: Build, Test and Deploy
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
 
 env:
@@ -44,11 +44,9 @@ jobs:
 
       - name: Restore dependencies
         run: |
-          # Try to restore using solution file if exists
           if [ -f "*.sln" ]; then
             dotnet restore
           else
-            # Find and restore csproj files
             for csproj in $(find . -name "*.csproj" -type f); do
               echo "Restoring: $csproj"
               dotnet restore "$csproj"
@@ -102,7 +100,6 @@ jobs:
           if [ ! -f "Dockerfile" ]; then
             echo "⚠️ Dockerfile not found, creating default Dockerfile..."
             
-            # Find the first csproj file to use as project name
             CSPROJ_FILE=$(find . -name "*.csproj" -type f | head -1)
             
             if [ -z "$CSPROJ_FILE" ]; then
@@ -112,23 +109,23 @@ jobs:
             
             PROJECT_NAME=$(basename "$CSPROJ_FILE" .csproj)
             
-            cat > Dockerfile << EOF
+            cat > Dockerfile << 'DOCKERFILE_EOF'
 # Build stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copy csproj and restore
-COPY ["$CSPROJ_FILE", "./"]
-RUN dotnet restore "./$(basename $CSPROJ_FILE)"
+COPY ["*.csproj", "./"]
+RUN dotnet restore
 
 # Copy everything else and build
 COPY . .
 WORKDIR "/src"
-RUN dotnet build "./$(basename $CSPROJ_FILE)" -c Release -o /app/build
+RUN dotnet build -c Release -o /app/build
 
 # Publish stage
 FROM build AS publish
-RUN dotnet publish "./$(basename $CSPROJ_FILE)" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish -c Release -o /app/publish /p:UseAppHost=false
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
@@ -137,10 +134,9 @@ EXPOSE 80
 EXPOSE 443
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "$PROJECT_NAME.dll"]
-EOF
+DOCKERFILE_EOF
             
             echo "✅ Created Dockerfile for project: $PROJECT_NAME"
-            cat Dockerfile
           else
             echo "✅ Dockerfile already exists"
           fi
@@ -164,9 +160,7 @@ EOF
           cache-to: type=gha,mode=max
           build-args: |
             BUILD_CONFIGURATION=Release
-          # Enable debugging output
           provenance: false
-          # Don't fail if cache not found
           no-cache-filters: true
 
       - name: Test Docker Compose locally
@@ -174,7 +168,7 @@ EOF
           echo "🔧 Testing Docker Compose locally..."
           
           # Create a simple test docker-compose file
-          cat > docker-compose.test.yml << EOF
+          cat > docker-compose.test.yml << 'COMPOSE_EOF'
 version: '3.8'
 services:
   sqlserver:
@@ -214,7 +208,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-EOF
+COMPOSE_EOF
           
           echo "🚀 Starting services..."
           docker compose -f docker-compose.test.yml up -d
@@ -224,6 +218,7 @@ EOF
           
           echo "📊 Checking service status..."
           docker compose -f docker-compose.test.yml ps
+
           
           echo "🧪 Testing API connectivity..."
           if docker compose -f docker-compose.test.yml exec -T api curl -f http://localhost:80/health 2>/dev/null; then
@@ -241,4 +236,5 @@ EOF
         run: |
           echo "🔍 Verifying image was pushed..."
           echo "Image: ${{ env.FULL_IMAGE_TAG }}:latest"
-          docker pull ${{ env.FULL_IMAGE_TAG }}:latest 2>/dev/null && echo "✅ Image pulled successfully!" || echo "⚠️ Could not pull image (might need time to propagate)"
+          docker pull ${{ env.FULL_IMAGE_TAG }}:latest 2>/dev/null && echo "✅ Image pulled successfully!" || echo "⚠️ Could not pull image"
+
