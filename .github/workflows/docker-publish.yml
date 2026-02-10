@@ -9,7 +9,8 @@ on:
 
 env:
   DOCKER_REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # Convert repository name to lowercase
+  IMAGE_NAME: ${{ github.repository | lower }}
   SQL_PASSWORD: ${{ secrets.DB_PASSWORD }}
   REDIS_HOST: redis
 
@@ -64,8 +65,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }}
+            ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
@@ -75,8 +76,11 @@ jobs:
         run: |
           echo "🔧 Testing Docker Compose locally..."
           
+          # Convert repository to lowercase for Docker image name
+          REPO_LOWER=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          
           # Create a test docker-compose file
-          cat > docker-compose.test.yml << 'EOF'
+          cat > docker-compose.test.yml << EOF
           version: '3.8'
           
           services:
@@ -100,7 +104,7 @@ jobs:
                 - "6379:6379"
 
             api:
-              image: ghcr.io/${{ github.repository }}:latest
+              image: ghcr.io/\$REPO_LOWER:latest
               depends_on:
                 sqlserver:
                   condition: service_healthy
