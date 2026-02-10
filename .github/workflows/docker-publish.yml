@@ -9,7 +9,7 @@ on:
 
 env:
   DOCKER_REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository | lower }}  # CHANGED: Added | lower
+  IMAGE_NAME: ${{ github.repository }}
   SQL_PASSWORD: ${{ secrets.DB_PASSWORD }}
   REDIS_HOST: redis
 
@@ -64,9 +64,71 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository | lower }}:latest  # CHANGED: Added | lower
-            ghcr.io/${{ github.repository | lower }}:${{ github.sha }}  # CHANGED: Added | lower
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             BUILD_CONFIGURATION=Release
+
+      - name: Test Docker Compose locally
+        run: |
+          echo "🔧 Testing Docker Compose locally..."
+          
+          # Create a test docker-compose file
+          cat > docker-compose.test.yml << 'EOF'
+          version: '3.8'
+          
+          services:
+            sqlserver:
+              image: mcr.microsoft.com/mssql/server:2022-latest
+              environment:
+                SA_PASSWORD: "Test@Password123"
+                ACCEPT_EULA: "Y"
+                MSSQL_PID: "Express"
+              ports:
+                - "1433:1433"
+              healthcheck:
+                test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'Test@Password123' -Q 'SELECT 1' || exit 1"]
+                interval: 30s
+                timeout: 10s
+                retries: 5
+
+            redis:
+              image: redis:7-alpine
+              ports:
+                - "6379:6379"
+
+            api:
+              image: ghcr.io/${{ github.repository }}:latest
+              depends_on:
+                sqlserver:
+                  condition: service_healthy
+                redis:
+                  condition: service_started
+              environment:
+                ConnectionStrings__DefaultConnection: "Server=sqlserver;Database=master;User Id=sa;Password=Test@Password123;Encrypt=True;TrustServerCertificate=True;"
+                ConnectionStrings__RadisConnection: "redis:6379"
+                ASPNETCORE_ENVIRONMENT: "Development"
+              ports:
+                - "8080:80"
+              healthcheck:
+                test: ["CMD", "curl", "-f", "http://localhost:80/health || exit 1"]
+                interval: 30s
+                timeout: 10s
+                retries: 3
+          EOF
+          
+          echo "🚀 Starting services..."
+          docker compose -f docker-compose.test.yml up -d
+          
+          echo "⏳ Waiting for services to start..."
+          sleep 30
+          
+          echo "📊 Checking service status..."
+          docker compose -f docker-compose.test.yml ps
+          
+          echo "🧹 Cleaning up..."
+          docker compose -f docker-compose.test.yml down
+          
+          echo "✅ Local Docker Compose test completed successfully!"
