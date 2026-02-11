@@ -9,14 +9,13 @@ on:
 
 env:
   DOCKER_REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ lower(github.repository) }}   # ✅ Fixed: lower() function
   SQL_PASSWORD: ${{ secrets.DB_PASSWORD }}
   REDIS_HOST: redis
+  # IMAGE_NAME will be set in a step (see below)
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,8 +35,7 @@ jobs:
         run: dotnet test --verbosity normal
 
       - name: Verify Docker Compose
-        run: |
-          docker compose config
+        run: docker compose config
 
   deploy-docker-compose:
     needs: build-and-test
@@ -47,6 +45,13 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # ✅ STEP 1: Convert repository name to lowercase and store in output
+      - name: Set lowercase repository name
+        id: repo_lower
+        run: |
+          echo "REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
+          echo "IMAGE_NAME=${{ github.repository_owner }}/$(echo '${{ github.event.repository.name }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -58,25 +63,26 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # ✅ STEP 2: Use the lowercase repository name in tags
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ lower(github.repository) }}:latest      # ✅ Fixed
-            ghcr.io/${{ lower(github.repository) }}:${{ github.sha }}  # ✅ Fixed
+            ghcr.io/${{ steps.repo_lower.outputs.REPO_LOWER }}:latest
+            ghcr.io/${{ steps.repo_lower.outputs.REPO_LOWER }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             BUILD_CONFIGURATION=Release
 
+      # ✅ STEP 3: Use the lowercase name in the test compose file
       - name: Test Docker Compose locally
         run: |
           echo "🔧 Testing Docker Compose locally..."
           
-          # Create a test docker-compose file
-          cat > docker-compose.test.yml << 'EOF'
+          cat > docker-compose.test.yml << EOF
           version: '3.8'
           
           services:
@@ -100,7 +106,7 @@ jobs:
                 - "6379:6379"
 
             api:
-              image: ghcr.io/${{ lower(github.repository) }}:latest   # ✅ Fixed
+              image: ghcr.io/${{ steps.repo_lower.outputs.REPO_LOWER }}:latest
               depends_on:
                 sqlserver:
                   condition: service_healthy
@@ -121,14 +127,7 @@ jobs:
           
           echo "🚀 Starting services..."
           docker compose -f docker-compose.test.yml up -d
-          
-          echo "⏳ Waiting for services to start..."
           sleep 30
-          
-          echo "📊 Checking service status..."
           docker compose -f docker-compose.test.yml ps
-          
-          echo "🧹 Cleaning up..."
           docker compose -f docker-compose.test.yml down
-          
           echo "✅ Local Docker Compose test completed successfully!"
