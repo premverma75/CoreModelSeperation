@@ -28,10 +28,10 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore ./CoreModelSeperation/CoreModelSeperation.csproj
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build ./CoreModelSeperation/CoreModelSeperation.csproj --configuration Release --no-restore
 
       - name: Test
         run: dotnet test --configuration Release --no-build --verbosity normal
@@ -59,20 +59,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 🔥 IMPORTANT: Correct context path
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./CoreModelSeperation   # ✅ FIXED
           push: true
           tags: |
             ghcr.io/${{ env.IMAGE_NAME_LC }}:latest
             ghcr.io/${{ env.IMAGE_NAME_LC }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            BUILD_CONFIGURATION=Release
 
-      # 🔥 Optional Integration Test
+      # Optional container startup test
       - name: Test container startup
         run: |
           docker run -d -p 8080:80 --name test-api ghcr.io/${{ env.IMAGE_NAME_LC }}:latest
