@@ -27,11 +27,12 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      # 🔥 Restore entire solution (SAFER)
       - name: Restore
-        run: dotnet restore ./CoreModelSeperation/CoreModelSeperation.csproj
+        run: dotnet restore
 
       - name: Build
-        run: dotnet build ./CoreModelSeperation/CoreModelSeperation.csproj --configuration Release --no-restore
+        run: dotnet build --configuration Release --no-restore
 
       - name: Test
         run: dotnet test --configuration Release --no-build --verbosity normal
@@ -45,7 +46,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 🔥 Convert repo name to lowercase (Docker requirement)
+      # 🔥 Convert repo name to lowercase
       - name: Set lowercase image name
         run: echo "IMAGE_NAME_LC=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
@@ -59,11 +60,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 🔥 IMPORTANT: Correct context path
+      # 🔥 Since Dockerfile is in root, use context: .
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./CoreModelSeperation   # ✅ FIXED
+          context: .
           push: true
           tags: |
             ghcr.io/${{ env.IMAGE_NAME_LC }}:latest
@@ -71,7 +72,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # Optional container startup test
       - name: Test container startup
         run: |
           docker run -d -p 8080:80 --name test-api ghcr.io/${{ env.IMAGE_NAME_LC }}:latest
