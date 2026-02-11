@@ -1,19 +1,19 @@
-# ---------- BUILD STAGE ----------
+# ---------- BUILD ----------
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /app
+WORKDIR /src
 
 COPY . .
 
 RUN dotnet restore
-RUN dotnet publish -c Release -o /publish
+RUN dotnet publish -c Release -o /app/publish
 
-# ---------- RUNTIME STAGE ----------
+# ---------- RUNTIME ----------
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
 ENV ASPNETCORE_URLS=http://+:80
 EXPOSE 80
 
-COPY --from=build /publish .
+COPY --from=build /app/publish .
 
 ENTRYPOINT ["dotnet", "CoreModelSeperation.dll"]
