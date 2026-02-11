@@ -9,7 +9,7 @@ on:
 
 env:
   DOCKER_REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository | lower }}   # ✅ Converted to lowercase
+  IMAGE_NAME: ${{ lower(github.repository) }}   # ✅ Fixed: lower() function
   SQL_PASSWORD: ${{ secrets.DB_PASSWORD }}
   REDIS_HOST: redis
 
@@ -64,8 +64,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository | lower }}:latest      # ✅ Lowercase
-            ghcr.io/${{ github.repository | lower }}:${{ github.sha }}  # ✅ Lowercase
+            ghcr.io/${{ lower(github.repository) }}:latest      # ✅ Fixed
+            ghcr.io/${{ lower(github.repository) }}:${{ github.sha }}  # ✅ Fixed
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
@@ -100,7 +100,7 @@ jobs:
                 - "6379:6379"
 
             api:
-              image: ghcr.io/${{ github.repository | lower }}:latest   # ✅ Lowercase
+              image: ghcr.io/${{ lower(github.repository) }}:latest   # ✅ Fixed
               depends_on:
                 sqlserver:
                   condition: service_healthy
